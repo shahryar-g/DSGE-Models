@@ -1,0 +1,19 @@
+model: ramsey_koopmans
+horizon: 60
+irf_horizon: 40
+irf_shock_size: 1.0
+seed: 7
+steady_state:
+  k: 0.0
+  c: 0.0
+params:
+  rho_k: 0.92
+  eta_c: 0.25
+  chi_k: 0.08
+  chi_c: 0.70
+  sd_a: 0.20
+  sd_u: 0.12
+solvers:
+  - direct_inverse
+  - linear_solve
+  - least_squares
