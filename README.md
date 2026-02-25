@@ -1,241 +1,176 @@
 # DSGE Solver Lab
 
-A minimal but scalable framework for building, solving, and comparing linearized DSGE models with multiple numerical solvers.
+A scalable starter codebase for experimenting with DSGE solution methods without restructuring your repository every time your model grows.
 
-This repository is designed for one core goal: **you can increase model size/complexity without changing the repository architecture**.
+## What this repository is for
 
-## Why this setup
+This project separates concerns so you can iterate fast:
 
-When DSGE projects grow, codebases often become hard to maintain because model equations, solver logic, simulation code, and experiments are tightly coupled. This template separates these concerns:
+- `models` hold equation systems (`H, M, N`)
+- `solvers` hold numerical solution methods (`F, G`)
+- `experiments` run and compare results
+- `configs` control runs without touching code
+- `core` contains common interfaces/utilities
 
-- Models define economics (`H, M, N` matrices).
-- Solvers define numerical methods (`F, G` solution matrices).
-- Experiments run comparisons and simulations.
-- Config files hold parameterization.
+The main design rule is simple:
 
-That separation lets you swap model and solver independently.
+**If a model returns valid `(H, M, N)`, it can be solved by any registered solver with the same pipeline.**
 
-## Mathematical setup
+## How the codebase works
 
-The framework uses this linear rational-expectations-style representation:
+### 1) Interfaces (`src/dsge/core/interfaces.py`)
 
-\[
-H \; E_t[x_{t+1}] = M \; x_t + N \; \varepsilon_t
-\]
+Two base interfaces define the contract:
 
-Where:
+- `LinearDSGEModel`
+  - `state_names`
+  - `shock_names`
+  - `system_matrices(params) -> (H, M, N)`
+- `Solver`
+  - `name`
+  - `solve(model, params) -> LinearSolution`
 
-- `x_t` is the vector of endogenous state/control variables.
-- `\varepsilon_t` is the vector of exogenous shocks.
-- `H, M, N` are model-implied coefficient matrices.
-
-Given `(H, M, N)`, each solver computes reduced-form transition equations:
-
-\[
-x_{t+1} = F x_t + G \varepsilon_t
-\]
-
-with:
-
-- `F` governing endogenous dynamics.
-- `G` mapping shocks into the system.
-
-In this starter project, solvers differ computationally, but target the same mathematical object.
-
-## Included toy model (New Keynesian style)
-
-File: `src/dsge/models/toy_nk.py`
-
-Variables:
-
-- `x`: output gap
-- `pi`: inflation
-- `i`: nominal interest rate
-
-Shocks:
-
-- demand shock
-- cost-push shock
-- monetary policy shock
-
-Structural equations implemented in the model:
-
-1. IS-type relation:
-\[
-x_{t+1} - \sigma \pi_{t+1} = a_x x_t - a_i i_t + sd_d e_{d,t}
-\]
-
-2. Phillips-curve-type relation:
-\[
--\kappa x_{t+1} + \pi_{t+1} = b_\pi \pi_t + sd_c e_{c,t}
-\]
-
-3. Interest-rate rule with smoothing:
-\[
-i_{t+1} = \rho_i i_t + (1-\rho_i)(\phi_\pi \pi_t + \phi_x x_t) + sd_m e_{m,t}
-\]
-
-These equations are converted into the matrix triplet `(H, M, N)` returned by `system_matrices(params)`.
-
-## Solvers included
-
-All solvers implement the same interface in `src/dsge/core/interfaces.py` and return:
+`LinearSolution` is a dataclass carrying:
 
 - `F`, `G`
-- stability flag
-- spectral radius of `F`
+- `solver_name`
+- `stable`
+- `spectral_radius`
 
-### 1) `direct_inverse`
+These interfaces are the key to scalability.
 
-File: `src/dsge/solvers/direct_inverse.py`
+### 2) Model layer (`src/dsge/models/`)
 
-Method:
+Each model file only does one job: convert parameters into system matrices.
 
-- Computes `H^{-1}` explicitly.
-- Uses `F = H^{-1}M`, `G = H^{-1}N`.
+Current included model:
 
-Pros:
+- `toy_nk.py`
 
-- Conceptually direct.
+Model details are documented separately in:
 
-Cons:
+- [`model-guide/TOY_NK_MODEL.md`](model-guide/TOY_NK_MODEL.md)
 
-- Explicit inverse can be less numerically robust for large/ill-conditioned systems.
+### 3) Solver layer (`src/dsge/solvers/`)
 
-### 2) `linear_solve`
+Each solver reads `(H, M, N)` and computes reduced-form dynamics `(F, G)`.
 
-File: `src/dsge/solvers/linear_solve.py`
+Included solvers:
 
-Method:
+- `direct_inverse.py`
+- `linear_solve.py`
+- `least_squares.py`
 
-- Solves linear systems directly: `HF=M` and `HG=N` via `np.linalg.solve`.
+`registry.py` exposes `available_solvers()` so experiments can choose solvers by name from config.
 
-Pros:
+### 4) Experiment layer (`src/dsge/experiments/`)
 
-- Usually preferred over explicit inverse for numerical stability.
+`run_toy_model.py` is a config-driven runner:
 
-Cons:
+1. Load YAML config
+2. Build model
+3. Select requested solvers from registry
+4. Solve model per solver
+5. Simulate paths
+6. Print comparable outputs
 
-- Requires nonsingular `H`.
+### 5) Config layer (`src/dsge/configs/`)
 
-### 3) `least_squares`
+`toy_nk.yaml` contains:
 
-File: `src/dsge/solvers/least_squares.py`
+- model key
+- calibration parameters
+- solver list
+- simulation horizon/seed
 
-Method:
+You can change parameters and solver selection without editing Python code.
 
-- Uses least-squares solution for `HF≈M`, `HG≈N` with `np.linalg.lstsq`.
+### 6) Tests (`tests/`)
 
-Pros:
+`test_solver_consistency.py` checks that all included solvers return close `F` and `G` on the baseline config.
 
-- Works as a fallback when `H` is singular or nearly singular.
-
-Cons:
-
-- May produce approximate solutions not equivalent to exact inversion.
-
-## Stability check
-
-After solving, the code computes the spectral radius:
-
-\[
-\rho(F) = \max_i |\lambda_i(F)|
-\]
-
-A simple stability flag is defined as `rho(F) < 1`.
-
-This is a practical first diagnostic for explosive dynamics. For advanced DSGE use, you can later add stricter existence/uniqueness diagnostics (e.g., generalized Schur / Blanchard-Kahn checks).
-
-## Repository structure
+## Repository layout
 
 ```text
 src/dsge/
   core/
-    interfaces.py      # model/solver interfaces + LinearSolution
-    simulation.py      # simulation + spectral radius helper
+    interfaces.py
+    simulation.py
   models/
-    toy_nk.py          # example DSGE model
+    toy_nk.py
   solvers/
     direct_inverse.py
     linear_solve.py
     least_squares.py
-    registry.py        # solver factory/registry
+    registry.py
   configs/
-    toy_nk.yaml        # baseline parameters + selected solvers
+    toy_nk.yaml
   experiments/
-    run_toy_model.py   # config-driven experiment runner
+    run_toy_model.py
 tests/
   test_solver_consistency.py
+model-guide/
+  TOY_NK_MODEL.md
 ```
 
-## Quick start
+## Launch and run
 
-### 1) Create environment
+### Option A: standard package install (recommended)
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-```
-
-### 2) Run the experiment
-
-```bash
 python -m dsge.experiments.run_toy_model --config src/dsge/configs/toy_nk.yaml
 ```
 
-The script prints, for each solver:
+### Option B: run directly from source
 
-- stability and spectral radius
-- solved `F` and `G`
-- final simulated state at the chosen horizon
+```bash
+PYTHONPATH=src python3 -m dsge.experiments.run_toy_model --config src/dsge/configs/toy_nk.yaml
+```
 
-### 3) (Optional) run tests
+## Run tests
 
 ```bash
 pip install pytest
 PYTHONPATH=src pytest -q
 ```
 
-## How to add a new model (scalable path)
+## Day-to-day workflow
 
-1. Create a new file in `src/dsge/models/`.
-2. Implement `LinearDSGEModel`:
-   - `state_names`
-   - `shock_names`
-   - `system_matrices(params) -> (H, M, N)`
-3. Add a YAML config in `src/dsge/configs/`.
-4. Update experiment selection logic (or generalize model registry).
-5. Reuse existing solvers without rewriting solver code.
+1. Edit/add model in `src/dsge/models/`
+2. Add/update config in `src/dsge/configs/`
+3. Run experiment command
+4. Compare solver outputs
+5. Add tests for new behavior
 
-The key scalability contract is: **as long as your model returns valid `(H, M, N)`, the rest of the pipeline stays unchanged**.
+## Extend without restructuring
 
-## How to add a new solver
+### Add a new model
 
-1. Add a new solver class in `src/dsge/solvers/` implementing `Solver`.
-2. Return a `LinearSolution` object.
-3. Register it in `src/dsge/solvers/registry.py`.
-4. Add the solver name in config under `solvers:`.
+1. Create `src/dsge/models/your_model.py`
+2. Implement `LinearDSGEModel`
+3. Return `(H, M, N)`
+4. Add a YAML config
+5. Update experiment model selection (or add model registry)
 
-No model code changes are needed when adding solvers.
+No solver code changes required.
 
-## Current limitations (intentional for v0)
+### Add a new solver
 
-- Only one included model (`toy_nk`).
-- No estimation/inference layer yet.
-- No IRF plotting yet.
-- No generalized eigenvalue (QZ) solver yet.
+1. Create `src/dsge/solvers/your_solver.py`
+2. Implement `Solver`
+3. Register it in `src/dsge/solvers/registry.py`
+4. Add its name in config under `solvers`
 
-This is intentional: keep v0 small, modular, and easy to extend.
+No model code changes required.
 
-## Suggested roadmap
+## Current status of this starter
 
-1. Add model registry to run multiple model classes from config.
-2. Add IRF and moments module.
-3. Add SciPy/QZ-based solver and Blanchard-Kahn diagnostics.
-4. Add calibration/estimation workflow.
-5. Add CI test matrix for multiple Python versions.
+- Modular architecture is in place
+- Multiple solver backends are wired
+- Config-driven run is working
+- Baseline consistency test exists
 
-## License
-
-Choose your preferred license before publishing (MIT is common for research tooling).
+This is intentionally minimal so you can grow it to larger DSGE systems while keeping a stable structure.
