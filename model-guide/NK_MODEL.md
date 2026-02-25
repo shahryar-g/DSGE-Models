@@ -16,23 +16,29 @@ This file documents the included example model in `src/dsge/models/nk_model.py`.
 
 ## Structural equations
 
-1. IS-type relation
+The model dynamics are:
 
-\[
+$$
+\begin{aligned}
 x_{t+1} - \sigma \pi_{t+1} = a_x x_t - a_i i_t + sd_d e_{d,t}
-\]
-
-2. Phillips-curve-type relation
-
-\[
+\\
 -\kappa x_{t+1} + \pi_{t+1} = b_\pi \pi_t + sd_c e_{c,t}
-\]
-
-3. Interest-rate rule with smoothing
-
-\[
+\\
 i_{t+1} = \rho_i i_t + (1-\rho_i)(\phi_\pi \pi_t + \phi_x x_t) + sd_m e_{m,t}
-\]
+\end{aligned}
+$$
+
+Matrix form used in the code:
+
+$$
+H\,\mathbb{E}_t[x_{t+1}] = M x_t + N \varepsilon_t
+$$
+
+and the solved transition law:
+
+$$
+x_{t+1} = F x_t + G \varepsilon_t
+$$
 
 ## Parameter source
 
