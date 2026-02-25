@@ -1,0 +1,19 @@
+[project]
+name = "dsge-lab"
+version = "0.1.0"
+description = "Scalable starter framework for experimenting with DSGE solvers"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

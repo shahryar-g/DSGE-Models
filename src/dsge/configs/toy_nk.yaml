@@ -1,0 +1,19 @@
+model: toy_nk
+horizon: 40
+seed: 7
+params:
+  sigma: 0.25
+  kappa: 0.15
+  a_x: 0.75
+  a_i: 0.10
+  b_pi: 0.60
+  rho_i: 0.70
+  phi_pi: 1.50
+  phi_x: 0.30
+  sd_d: 0.20
+  sd_c: 0.15
+  sd_m: 0.10
+solvers:
+  - direct_inverse
+  - linear_solve
+  - least_squares
