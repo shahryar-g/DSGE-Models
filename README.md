@@ -115,19 +115,35 @@ model-guide/
 
 ## Launch and run
 
-### Option A: standard package install (recommended)
+### Fastest run (one command)
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-python -m dsge.experiments.run_toy_model --config src/dsge/configs/toy_nk.yaml
+./run.sh
 ```
 
-### Option B: run directly from source
+This command installs required Python packages (if missing), runs the experiment, and saves outputs automatically.
+
+Results are saved under:
+
+```text
+result/<model>/<run_timestamp>/<solver>/
+```
+
+Each solver folder contains:
+
+- `F.csv`
+- `G.csv`
+- `trajectory.csv`
+- `states.png`
+- `summary.json`
+
+### Manual run (without `run.sh`)
 
 ```bash
-PYTHONPATH=src python3 -m dsge.experiments.run_toy_model --config src/dsge/configs/toy_nk.yaml
+python3 -m pip install numpy pyyaml matplotlib
+PYTHONPATH=src python3 -m dsge.experiments.run_toy_model \
+  --config src/dsge/configs/toy_nk.yaml \
+  --output result
 ```
 
 ## Run tests
