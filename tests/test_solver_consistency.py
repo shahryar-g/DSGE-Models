@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dsge.models.toy_nk import ToyNKModel
+from dsge.models.nk_model import NKModel
 from dsge.solvers.registry import available_solvers
 
 
@@ -21,7 +21,7 @@ def test_all_solvers_return_close_policy_matrices() -> None:
         "sd_m": 0.10,
     }
 
-    model = ToyNKModel()
+    model = NKModel()
     solvers = available_solvers()
 
     base = solvers["linear_solve"].solve(model, params)
