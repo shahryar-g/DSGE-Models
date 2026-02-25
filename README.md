@@ -21,7 +21,7 @@ Core contract:
 ## Fastest run
 
 ```bash
-cd "/Users/shahriar/Cave/DSGE Models"
+cd /path/to/DSGE-Models
 ./run.sh
 ```
 
