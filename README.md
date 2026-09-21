@@ -1,88 +1,80 @@
 # DSGE Solver Lab
 
-A scalable starter codebase for DSGE experiments where you can increase model complexity without changing repository structure.
+A small Python framework for comparing solution methods for linearized DSGE models. Models and solvers plug into a shared matrix interface, so you can add a new model or a new solver without changing the rest of the code.
 
-## Codebase overview
+## Models
 
-- `src/dsge/core/`: interfaces and shared simulation helpers
-- `src/dsge/models/`: model definitions (`nk_model.py`, `ramsey_koopmans.py`)
-- `src/dsge/solvers/`: interchangeable solver backends
-- `src/dsge/configs/`: run/calibration configs
-- `src/dsge/experiments/`: generic experiment runner
-- `tests/`: solver consistency checks
-- `model-guide/`: model-specific economic documentation
-- `run/`: model-specific launch scripts
+| Model | Variables | Guide |
+|---|---|---|
+| `nk_model` | Output gap, inflation, interest rate (New Keynesian, with interest-rate smoothing) | [NK_MODEL.md](model-guide/NK_MODEL.md) |
+| `ramsey_koopmans` | Capital, consumption (Ramsey-Koopmans with Euler-type dynamics) | [RAMSEY_KOOPMANS_MODEL.md](model-guide/RAMSEY_KOOPMANS_MODEL.md) |
 
-Core contract:
+## Solvers
 
-- A model returns `(H, M, N)`.
-- Any registered solver can solve it and produce `(F, G)`.
-- The generic experiment runner handles simulation and outputs.
+Every registered solver is run on the same model, and the results are compared:
 
-## Fastest run
+- `linear_solve`
+- `direct_inverse`
+- `least_squares`
 
-Default model (`nk_model`):
+## How it works
 
-```bash
-./run.sh
-```
+- A model returns the matrices `(H, M, N)`.
+- Any registered solver takes them and produces the policy matrices `(F, G)`.
+- The generic experiment runner then simulates the model and saves the outputs.
 
-Choose model explicitly:
+## Quick start
+
+Requires Python 3.10+.
 
 ```bash
-./run.sh nk_model
-./run.sh ramsey_koopmans
+./run.sh                  # runs nk_model by default
+./run.sh ramsey_koopmans  # pick a model explicitly
 ```
 
-Or use model-specific scripts:
+`run.sh` installs the dependencies (numpy, pyyaml, matplotlib, openpyxl) and runs the experiment. To run it by hand:
 
 ```bash
-./run/run_nk_model.sh
-./run/run_ramsey_koopmans.sh
-```
-
-## Output structure
-
-Each run saves to:
-
-```text
-result/<model>/<run_timestamp>/
-```
-
-Inside each solver folder, only these plots are saved:
-
-- `irf/irf_matrix.png` (variables x shocks IRF matrix)
-- `steady_state/states_vs_steady.png` (state paths with steady-state levels)
-
-At the run root, one Excel file is saved:
-
-- `timeseries.xlsx`
-
-`timeseries.xlsx` contains one sheet per solver, with time and state values.
-
-## Manual run
-
-```bash
-python3 -m pip install numpy pyyaml matplotlib openpyxl
+pip install numpy pyyaml matplotlib openpyxl
 PYTHONPATH=src python3 -m dsge.experiments.run_model \
   --config src/dsge/configs/nk_model.yaml \
   --output result
 ```
 
-Use `src/dsge/configs/ramsey_koopmans.yaml` to run the Ramsey-Koopmans model.
+Calibrations and simulation settings (horizon, shock size, seed, parameters) live in the YAML files in `src/dsge/configs/`.
 
-## Main files
+## Output
 
-- `src/dsge/experiments/run_model.py`
-- `src/dsge/models/nk_model.py`
-- `src/dsge/models/ramsey_koopmans.py`
-- `src/dsge/configs/nk_model.yaml`
-- `src/dsge/configs/ramsey_koopmans.yaml`
-- `run.sh`
-- `run/run_nk_model.sh`
-- `run/run_ramsey_koopmans.sh`
+Each run writes to `result/<model>/<run_timestamp>/`:
 
-Model details are documented in:
+- `timeseries.xlsx`: one sheet per solver, with time and state values
+- `<solver>/irf/irf_matrix.png`: impulse responses (variables x shocks)
+- `<solver>/steady_state/states_vs_steady.png`: state paths against steady-state levels
 
-- `model-guide/NK_MODEL.md`
-- `model-guide/RAMSEY_KOOPMANS_MODEL.md`
+## Tests
+
+```bash
+PYTHONPATH=src python3 -m pytest tests
+```
+
+Checks that all solvers agree on both models.
+
+## Repository layout
+
+```text
+src/dsge/
+  core/          interfaces and shared simulation helpers
+  models/        model definitions and registry
+  solvers/       solver backends and registry
+  configs/       run and calibration configs (YAML)
+  experiments/   generic experiment runner
+tests/           solver consistency checks
+model-guide/     economic documentation for each model
+run/             model-specific launch scripts
+```
+
+## Adding a model or solver
+
+1. Add a model class under `src/dsge/models/` and register it in `registry.py`.
+2. Add a config in `src/dsge/configs/<model>.yaml`.
+3. For a new solver, add it under `src/dsge/solvers/` and register it in `registry.py`. It will then be included in every run automatically.
