@@ -43,6 +43,12 @@ PYTHONPATH=src python3 -m dsge.experiments.run_model \
 
 Calibrations and simulation settings (horizon, shock size, seed, parameters) live in the YAML files in `src/dsge/configs/`.
 
+## Example output
+
+Impulse responses of the NK model (variables x shocks), from `linear_solve`:
+
+![NK impulse responses](docs/nk_irf.png)
+
 ## Output
 
 Each run writes to `result/<model>/<run_timestamp>/`:
